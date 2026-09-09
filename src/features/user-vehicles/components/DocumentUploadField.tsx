@@ -1,0 +1,72 @@
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+import { useTheme } from '../../../theme';
+import { AppText } from '../../../components/ui';
+import { pickAndUploadImage } from '../../media/useImagePicker';
+import { normalizeApiError } from '../../../api/errors';
+
+export interface UploadedDoc {
+  url: string;
+  publicId: string;
+}
+
+interface DocumentUploadFieldProps {
+  label: string;
+  value: UploadedDoc | null;
+  onChange: (doc: UploadedDoc) => void;
+  entityId?: string; // groups this upload into the owning vehicle's S3 folder
+}
+
+// Shared by the personal-vehicle registration form (CNIC / driving license / vehicle
+// registration) — uploads via /media/upload?context=trip_document, same plumbing
+// used for provider vehicle photos, just a different context.
+export function DocumentUploadField({ label, value, onChange, entityId }: DocumentUploadFieldProps) {
+  const { colors, radii, spacing } = useTheme();
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePick = async () => {
+    setError(null);
+    setUploading(true);
+    try {
+      const uploaded = await pickAndUploadImage('trip_document', undefined, entityId);
+      if (uploaded) onChange({ url: uploaded.url, publicId: uploaded.publicId });
+    } catch (e) {
+      setError(normalizeApiError(e).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <View style={{ marginBottom: spacing.md }}>
+      <AppText variant="label" style={{ marginBottom: spacing.xs }}>
+        {label}
+      </AppText>
+      <Pressable
+        onPress={handlePick}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: value ? colors.success : colors.border,
+          borderRadius: radii.md,
+          padding: spacing.sm,
+        }}
+      >
+        {value ? (
+          <Image source={{ uri: value.url }} style={{ width: 56, height: 42, borderRadius: radii.sm, marginRight: spacing.md }} contentFit="cover" />
+        ) : null}
+        <AppText color={value ? colors.success : colors.primary} variant="label">
+          {uploading ? 'Uploading...' : value ? 'Uploaded — tap to replace' : 'Upload photo'}
+        </AppText>
+      </Pressable>
+      {error ? (
+        <AppText variant="caption" color={colors.danger} style={{ marginTop: spacing.xs }}>
+          {error}
+        </AppText>
+      ) : null}
+    </View>
+  );
+}

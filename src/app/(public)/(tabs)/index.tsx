@@ -1,0 +1,154 @@
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
+
+import { useInfiniteListings } from '../../../features/listings/queries';
+import { useSavedVehicles } from '../../../features/saved-vehicles/queries';
+import { VehicleCard } from '../../../features/listings/components/VehicleCard';
+import { FilterSheet } from '../../../features/listings/components/FilterSheet';
+import { AppButton, AppInput, AppScreen, AppText, ErrorState, LoadingState } from '../../../components/ui';
+import { EmptyState } from '../../../components/ui/States';
+import { NearMeControl } from '../../../components/maps/NearMeControl';
+import { ResultsMap } from '../../../components/maps/ResultsMap';
+import { useCurrentLocation } from '../../../hooks/useCurrentLocation';
+import { useAuth } from '../../../auth/auth-context';
+import { useTheme } from '../../../theme';
+import type { ListingFilters } from '../../../api/listings.api';
+
+// Kept small (a real neighborhood, not the whole city) so the "near me" map
+// circle reads as a local estimate rather than covering the entire metro area.
+const NEARBY_RADIUS_KM = 8;
+
+// The Vehicles tab IS the landing page — a directly browsable, filterable list,
+// not a separate hero/featured teaser screen.
+export default function VehiclesScreen() {
+  const { colors, spacing } = useTheme();
+  const { isAuthenticated } = useAuth();
+  const [searchText, setSearchText] = useState('');
+  const [filters, setFilters] = useState<ListingFilters>({});
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const location = useCurrentLocation();
+
+  const appliedFilters = useMemo(
+    () => ({
+      ...filters,
+      search: searchText || undefined,
+      lat: location.coords?.lat,
+      lng: location.coords?.lng,
+      radiusKm: location.coords ? NEARBY_RADIUS_KM : undefined,
+    }),
+    [filters, searchText, location.coords],
+  );
+  const query = useInfiniteListings(appliedFilters);
+  const saved = useSavedVehicles();
+
+  const vehicles = favoritesOnly
+    ? (saved.data?.data.map((entry) => entry.vehicle) ?? [])
+    : (query.data?.pages.flatMap((page) => page.data) ?? []);
+  const activeFilterCount = Object.values(filters).filter((v) => v !== undefined && v !== '').length;
+
+  const pins = vehicles
+    .filter((v) => v.showroom?.mapLat != null && v.showroom?.mapLng != null)
+    .map((v) => ({ id: v.id, lat: v.showroom!.mapLat as number, lng: v.showroom!.mapLng as number, title: v.title }));
+
+  const handleNearMe = async () => {
+    const coords = await location.requestLocation();
+    if (coords) setFilters((f) => ({ ...f, city: undefined }));
+  };
+
+  return (
+    <AppScreen edges={['top', 'left', 'right']}>
+      <View style={{ padding: spacing.lg, paddingBottom: spacing.sm, gap: spacing.sm }}>
+        <AppText variant="title">Vehicles</AppText>
+        <AppInput
+          placeholder="Search by title, make, or model"
+          value={searchText}
+          onChangeText={setSearchText}
+          returnKeyType="search"
+          style={{ marginBottom: 0 }}
+        />
+        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' }}>
+          <AppButton
+            title={activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters & sort'}
+            variant="outline"
+            fullWidth={false}
+            onPress={() => setSheetVisible(true)}
+          />
+          <NearMeControl
+            active={!!location.coords}
+            loading={location.loading}
+            error={location.error}
+            onActivate={handleNearMe}
+            onClear={location.clearLocation}
+          />
+        </View>
+        {isAuthenticated ? (
+          <Pressable
+            onPress={() => setFavoritesOnly((v) => !v)}
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.xs,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: favoritesOnly ? colors.primary : colors.border,
+              backgroundColor: favoritesOnly ? colors.primary : 'transparent',
+            }}
+          >
+            <AppText variant="caption" color={favoritesOnly ? colors.primaryText : colors.text}>
+              {favoritesOnly ? '♥ My favorites' : '♡ My favorites'}
+            </AppText>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {location.coords && pins.length > 0 ? (
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm }}>
+          <ResultsMap userLocation={location.coords} radiusKm={NEARBY_RADIUS_KM} pins={pins} />
+        </View>
+      ) : null}
+
+      {favoritesOnly ? (
+        saved.isLoading ? (
+          <LoadingState label="Loading your favorites..." />
+        ) : saved.isError ? (
+          <ErrorState message="Couldn't load your favorites." onRetry={() => saved.refetch()} />
+        ) : (
+          <FlatList
+            data={vehicles}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, flexGrow: 1 }}
+            renderItem={({ item }) => <VehicleCard vehicle={item} />}
+            ListEmptyComponent={
+              <EmptyState title="No favorites yet" description="Tap the heart on a vehicle to save it here." />
+            }
+          />
+        )
+      ) : query.isLoading ? (
+        <LoadingState label="Loading vehicles..." />
+      ) : query.isError ? (
+        <ErrorState message="Couldn't load vehicles." onRetry={() => query.refetch()} />
+      ) : (
+        <FlatList
+          data={vehicles}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, flexGrow: 1 }}
+          renderItem={({ item }) => <VehicleCard vehicle={item} />}
+          onEndReachedThreshold={0.4}
+          onEndReached={() => {
+            if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();
+          }}
+          ListFooterComponent={query.isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: spacing.md }} /> : null}
+          ListEmptyComponent={
+            <EmptyState title="No vehicles found" description="Try adjusting your search or filters." />
+          }
+        />
+      )}
+
+      <FilterSheet visible={sheetVisible} onClose={() => setSheetVisible(false)} filters={filters} onApply={setFilters} />
+    </AppScreen>
+  );
+}
