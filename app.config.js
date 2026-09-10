@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: 'rental-mobile',
+    name: 'KerayeGo',
     slug: 'rental-mobile',
     version: '1.0.0',
     orientation: 'portrait',
@@ -17,7 +17,7 @@ module.exports = {
     android: {
       package: 'com.rentalmobile.app',
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
+        backgroundColor: '#FF4E64',
         foregroundImage: './assets/images/android-icon-foreground.png',
         backgroundImage: './assets/images/android-icon-background.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -38,9 +38,9 @@ module.exports = {
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#208AEF',
+          backgroundColor: '#FFF7F3',
           image: './assets/images/splash-icon.png',
-          imageWidth: 76,
+          imageWidth: 180,
         },
       ],
       'expo-secure-store',
