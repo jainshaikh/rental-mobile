@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { useTheme } from '../../../theme';
 import { AppButton, AppInput, AppText, DateField } from '../../../components/ui';
+import { LocationField } from '../../location/components/LocationField';
 import { FilterChipRow } from '../../listings/components/FilterChipRow';
 import { useMyApprovedUserVehicles } from '../../user-vehicles/queries';
 import { tripFormSchema, type TripFormValues } from '../../../schemas/trip.schema';
@@ -81,12 +82,20 @@ export function TripForm({ defaultValues, onSubmit, submitLabel, submitting }: T
         control={control}
         name="pickupPoint"
         render={({ field }) => (
-          <AppInput
+          <LocationField
             label="Pickup point"
+            required
             placeholder="Liaquatabad Chowrangi, near Total Petrol Pump"
             value={field.value}
             onChangeText={field.onChange}
+            lat={watch('pickupLat')}
+            lng={watch('pickupLng')}
+            onLocationChange={(lat, lng) => {
+              setValue('pickupLat', lat);
+              setValue('pickupLng', lng);
+            }}
             error={errors.pickupPoint?.message}
+            regionCodes={['PK', 'AE', 'SA']}
           />
         )}
       />
@@ -94,11 +103,18 @@ export function TripForm({ defaultValues, onSubmit, submitLabel, submitting }: T
         control={control}
         name="dropoffPoint"
         render={({ field }) => (
-          <AppInput
+          <LocationField
             label="Drop-off point (optional)"
-            value={field.value}
+            value={field.value ?? ''}
             onChangeText={field.onChange}
+            lat={watch('dropoffLat')}
+            lng={watch('dropoffLng')}
+            onLocationChange={(lat, lng) => {
+              setValue('dropoffLat', lat);
+              setValue('dropoffLng', lng);
+            }}
             error={errors.dropoffPoint?.message}
+            regionCodes={['PK', 'AE', 'SA']}
           />
         )}
       />

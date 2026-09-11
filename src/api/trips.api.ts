@@ -17,7 +17,11 @@ export interface CreateTripPayload {
   originCity: string;
   destinationCity: string;
   pickupPoint: string;
+  pickupLat?: number;
+  pickupLng?: number;
   dropoffPoint?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   departureAt: string; // ISO date-time, must be in the future
   availableSeats: number;
   pricePerSeat: number;

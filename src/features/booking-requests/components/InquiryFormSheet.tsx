@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 
 import { useTheme } from '../../../theme';
 import { AppButton, AppInput, AppText, DateField } from '../../../components/ui';
+import { LocationField } from '../../location/components/LocationField';
 import { bookingInquirySchema, type BookingInquiryFormValues } from '../../../schemas/booking.schema';
 import { useCreateBookingRequest } from '../queries';
 import { normalizeApiError } from '../../../api/errors';
@@ -224,12 +225,17 @@ export function InquiryFormSheet({ visible, onClose, vehicleId, vehicleTitle, ve
               control={control}
               name="pickupLocation"
               render={({ field }) => (
-                <AppInput
+                <LocationField
                   label="Pickup location (optional)"
                   placeholder="e.g. Dubai Marina"
-                  value={field.value}
+                  value={field.value ?? ''}
                   onChangeText={field.onChange}
+                  // BookingRequest.pickupLocation is a free-text label only —
+                  // no coordinate field exists for it on the backend, so a
+                  // map-picked point just fills the text the same as a typed one.
+                  onLocationChange={() => {}}
                   error={errors.pickupLocation?.message}
+                  regionCodes={['PK', 'AE', 'SA']}
                 />
               )}
             />

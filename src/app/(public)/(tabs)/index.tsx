@@ -10,6 +10,7 @@ import { EmptyState } from '../../../components/ui/States';
 import { NearMeControl } from '../../../components/maps/NearMeControl';
 import { ResultsMap } from '../../../components/maps/ResultsMap';
 import { useCurrentLocation } from '../../../hooks/useCurrentLocation';
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { useAuth } from '../../../auth/auth-context';
 import { useTheme } from '../../../theme';
 import type { ListingFilters } from '../../../api/listings.api';
@@ -24,6 +25,10 @@ export default function VehiclesScreen() {
   const { colors, spacing } = useTheme();
   const { isAuthenticated } = useAuth();
   const [searchText, setSearchText] = useState('');
+  // The TextInput below stays bound to searchText (instant, every keystroke)
+  // — only this debounced value feeds the actual query, so typing a whole
+  // phrase doesn't fire a fetch per character.
+  const debouncedSearchText = useDebouncedValue(searchText);
   const [filters, setFilters] = useState<ListingFilters>({});
   const [sheetVisible, setSheetVisible] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -32,12 +37,12 @@ export default function VehiclesScreen() {
   const appliedFilters = useMemo(
     () => ({
       ...filters,
-      search: searchText || undefined,
+      search: debouncedSearchText || undefined,
       lat: location.coords?.lat,
       lng: location.coords?.lng,
       radiusKm: location.coords ? NEARBY_RADIUS_KM : undefined,
     }),
-    [filters, searchText, location.coords],
+    [filters, debouncedSearchText, location.coords],
   );
   const query = useInfiniteListings(appliedFilters);
   const saved = useSavedVehicles();
@@ -108,6 +113,19 @@ export default function VehiclesScreen() {
       {location.coords && pins.length > 0 ? (
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm }}>
           <ResultsMap userLocation={location.coords} radiusKm={NEARBY_RADIUS_KM} pins={pins} />
+        </View>
+      ) : null}
+
+      {!favoritesOnly && query.isFetching && !query.isLoading ? (
+        // A search/filter change swaps the query key entirely, but
+        // placeholderData keeps the previous results on screen while the new
+        // ones load — this just signals that a refresh is in progress,
+        // instead of replacing the list with a full loading skeleton.
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <AppText muted variant="caption">
+            Updating…
+          </AppText>
         </View>
       ) : null}
 
