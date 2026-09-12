@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "155868589460",
+    "project_id": "rentalmarketplave",
+    "storage_bucket": "rentalmarketplave.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155868589460:android:8795bc3023b5b94816f381",
+        "android_client_info": {
+          "package_name": "com.rentalmobile.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvJiv4qhwy-mqi-5UDrBvF7gKmi97Wcm8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

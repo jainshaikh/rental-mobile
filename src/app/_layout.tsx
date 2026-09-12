@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,13 +10,35 @@ import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outf
 
 import { queryClient } from '../api/query-client';
 import { AuthProvider, useAuth } from '../auth/auth-context';
+import { configureNotificationHandler } from '../features/notifications/pushToken';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+configureNotificationHandler();
+
+// Only the rider-facing events map to one specific already-known screen
+// (the rider's own request, by inquiryId); a tap on the poster-facing
+// "new request" notification just opens the app normally rather than
+// guessing a wrong destination — the poster's per-inquiry view lives inside
+// a trip we don't have the id for from the push payload alone.
+const RIDER_FACING_TYPES = new Set(['tripInquiry.accepted', 'tripInquiry.rejected', 'tripInquiry.cancelled']);
+
+function useNotificationTapNavigation() {
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { type?: string; inquiryId?: string } | undefined;
+      if (data?.type && RIDER_FACING_TYPES.has(data.type) && data.inquiryId) {
+        router.push(`/account/trip-request/${data.inquiryId}`);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+}
 
 function RootNavigator() {
   const { isBootstrapping } = useAuth();
   const [fontsLoaded] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold });
   const isReady = !isBootstrapping && fontsLoaded;
+  useNotificationTapNavigation();
 
   useEffect(() => {
     if (isReady) {

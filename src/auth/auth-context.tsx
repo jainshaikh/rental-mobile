@@ -5,6 +5,7 @@ import { authApi, type LoginPayload, type RegisterPayload } from '../api/auth.ap
 import { usersApi } from '../api/users.api';
 import { refreshAccessToken, setAccessToken, setOnSessionExpired } from '../api/client';
 import { clearAllAuthStorage, getRefreshToken, setRefreshToken } from '../storage/secure-storage';
+import { registerPushToken, unregisterPushToken } from '../features/notifications/pushToken';
 import type { AuthUser, User } from '../types/api.types';
 
 interface AuthContextValue {
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const me = await usersApi.getMe();
         setUser(me);
+        registerPushToken();
       } catch {
         await clearAllAuthStorage();
         setAccessToken(null);
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setRefreshToken(result.refreshToken);
     }
     setUser(result.user);
+    registerPushToken();
     return result.user;
   }, []);
 
@@ -79,6 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Must run before clearSession — it needs the still-valid access token
+    // to authenticate the unregister call.
+    await unregisterPushToken();
     try {
       await authApi.logout();
     } catch {

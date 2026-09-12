@@ -16,6 +16,7 @@ module.exports = {
     },
     android: {
       package: 'com.rentalmobile.app',
+      googleServicesFile: './google-services.json',
       adaptiveIcon: {
         backgroundColor: '#FF4E64',
         foregroundImage: './assets/images/android-icon-foreground.png',
@@ -49,6 +50,16 @@ module.exports = {
         'expo-location',
         {
           locationWhenInUsePermission: 'Allow $(PRODUCT_NAME) to use your location to show nearby vehicles and carpools.',
+        },
+      ],
+      [
+        'expo-notifications',
+        {
+          // Monochrome (white-silhouette-on-transparent) is the asset Android
+          // itself requires for status-bar notification icons — the same file
+          // already built for the adaptive icon's monochrome layer works as-is.
+          icon: './assets/images/android-icon-monochrome.png',
+          color: '#FF4E64',
         },
       ],
     ],
